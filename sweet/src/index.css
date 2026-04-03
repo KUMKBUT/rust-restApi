@@ -1,0 +1,603 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: sans-serif;
+  /* Добавляем url() и правильный путь от текущей папки */
+  background-image: url('./assets/ui/background.png'); 
+  
+  /* Чтобы фон растянулся на весь экран и не повторялся */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed; /* Фон не будет прокручиваться */
+
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0; /* Убираем стандартные отступы браузера */
+}
+
+body:has(.bonus-mode) {
+  /* Путь к бонусному фону */
+  background-image: url('./assets/ui/background_bonus.png');
+}
+
+.game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 30px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(6, 80px);
+  grid-template-rows: repeat(5, 80px);
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.symbol-wrapper {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05); /* Легкая подсветка ячейки */
+}
+
+.symbol {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.explode {
+  /* Добавляем !important для теста, чтобы исключить конфликты */
+  animation: pulseWin 1.2s ease-in-out forwards !important;
+  position: relative;
+  z-index: 9999 !important;
+  pointer-events: none;
+  display: block !important;
+}
+
+@keyframes pulseWin {
+  0% { 
+    transform: scale(1); 
+    filter: brightness(1);
+  }
+  50% { 
+    transform: scale(1.1); /* Сделаем масштаб побольше, чтобы точно заметить */
+  }
+  100% { 
+    transform: scale(0); 
+    opacity: 0; 
+  }
+}
+
+/* 2. Анимация падения символов (Лавина) */
+@keyframes dropDown {
+  0% { transform: translateY(-280px); opacity: 0; }
+  70% { transform: translateY(0px); } /* Легкий пролет ниже цели */
+  85% { transform: translateY(-2px); } /* Отскок вверх */
+  100% { transform: translateY(0); opacity: 1; } /* Установка на место */
+}
+
+.fall {
+  /* Используем красивый кубический безье для эффекта тяжелой конфеты */
+  animation: dropDown 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* ========================================= */
+/* UI ПАНЕЛЬ                 */
+/* ========================================= */
+.ui-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 10px 20px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 15px;
+}
+
+.spin-btn {
+  padding: 15px 40px;
+  font-size: 24px;
+  font-weight: bold;
+  background: linear-gradient(180deg, #ff7eb3 0%, #ff758c 100%);
+  border: 3px solid #fff;
+  border-radius: 50px;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(255, 117, 140, 0.6);
+  text-transform: uppercase;
+  transition: transform 0.1s;
+}
+
+.spin-btn:active {
+  transform: scale(0.95);
+}
+
+.spin-btn:disabled {
+  background: gray;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.symbol-wrapper {
+  position: relative; /* Чтобы множитель позиционировался внутри ячейки */
+}
+
+.bomb-multiplier {
+  position: absolute;
+  z-index: 10;
+  color: white;
+  font-weight: 900;
+  font-size: 1.1rem;
+  /* Красивая обводка текста, чтобы его было видно на любом фоне */
+  text-shadow: 
+    2px 2px 0 #000,
+    -1px -1px 0 #000,  
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000;
+  pointer-events: none; /* Чтобы цифры не мешали кликам */
+}
+/* Контейнер нижнего меню */
+.controls-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 800px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 20px 30px;
+  border-radius: 30px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  margin-top: 20px;
+}
+
+/* Кнопка Покупки Бонуса (Золотая) */
+.buy-bonus-btn {
+  background: linear-gradient(180deg, #ffde59 0%, #ff914d 100%);
+  border: 3px solid #ffffff;
+  border-radius: 20px;
+  color: #542e00;
+  padding: 10px 20px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 0 #b36200;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.buy-bonus-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+.buy-bonus-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 #b36200;
+}
+
+/* Блок управления ставкой */
+.ui-main-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.bet-selector {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 30px;
+  padding: 5px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.bet-selector button {
+  background: #ff758c;
+  color: white;
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: 0.2s;
+}
+
+.bet-info {
+  margin: 0 20px;
+  text-align: center;
+}
+
+.bet-info .label {
+  display: block;
+  font-size: 10px;
+  color: #ffb1c1;
+}
+
+.bet-info .value {
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+}
+
+/* Главная кнопка SPIN (Розовая) */
+.spin-btn-large {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(180deg, #ff7eb3 0%, #ff2e55 100%);
+  border: 4px solid #ffffff;
+  border-radius: 50%;
+  color: white;
+  font-size: 20px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #b3002d, 0 10px 20px rgba(255, 46, 85, 0.4);
+  transition: all 0.1s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.spin-btn-large:hover:not(:disabled) {
+  transform: scale(1.05);
+  filter: saturate(1.2);
+}
+
+.spin-btn-large:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #b3002d;
+}
+
+.spin-btn-large:disabled {
+  filter: grayscale(1);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Эффект свечения для бонусного режима */
+.bonus-mode .controls-container {
+  border-color: #ff00ff;
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
+}
+.bonus-header {
+  position: absolute;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 100;
+}
+
+.bonus-title {
+  font-size: 32px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff;
+  letter-spacing: 2px;
+}
+
+.spins-left {
+  background: #ff00ff;
+  padding: 5px 20px;
+  border-radius: 20px;
+  font-weight: bold;
+  border: 2px solid white;
+  margin-top: 5px;
+}
+.bonus-header {
+  position: absolute;
+  top: 10px;
+  text-align: center;
+  background: rgba(255, 0, 255, 0.3);
+  padding: 10px 40px;
+  border-radius: 20px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 20px #ff00ff;
+  z-index: 10;
+}
+
+.bonus-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+.bonus-status-area {
+  height: 80px; /* Резервируем место, чтобы сетка не прыгала */
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.bonus-header {
+  transform: translateY(-20px); /* Поднимаем выше */
+  background: linear-gradient(180deg, #ff00ff, #800080);
+  padding: 10px 30px;
+  border-radius: 15px;
+  border: 2px solid #fff;
+  text-align: center;
+}
+
+.result-card {
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #ffd700;
+  padding: 15px;
+  border-radius: 10px;
+  color: #ffd700;
+  font-weight: bold;
+  animation: fadeIn 0.3s;
+}
+/* --- 1. АНИМАЦИЯ ПУЛЬСАЦИИ СКАТТЕРОВ --- */
+@keyframes scatterPulseAnim {
+  0% { transform: scale(1); filter: drop-shadow(0 0 5px #fff); }
+  50% { transform: scale(1.4); filter: drop-shadow(0 0 40px #ff00ff) brightness(1.2); z-index: 100; }
+  100% { transform: scale(1); filter: drop-shadow(0 0 5px #fff); }
+}
+.scatter-pulse {
+  animation: scatterPulseAnim 1.5s ease-in-out;
+  position: relative;
+  z-index: 50;
+}
+
+/* --- 2. АНИМАЦИЯ ВЗРЫВА БОМБЫ --- */
+@keyframes bombExplodeAnim {
+  0% { transform: scale(1); filter: brightness(1); }
+  40% { transform: scale(1.6); filter: brightness(1.5) drop-shadow(0 0 30px #ffd700); z-index: 100; }
+  100% { transform: scale(0); opacity: 0; filter: brightness(2); }
+}
+.bomb-explode {
+  animation: bombExplodeAnim 0.8s forwards;
+  position: relative;
+  z-index: 100;
+}
+.hide-text { opacity: 0; transition: 0.2s; } /* Прячем текст на бомбе при взрыве */
+
+/* --- 3. НАКОПИТЕЛЬ МНОЖИТЕЛЯ СВЕРХУ --- */
+.multiplier-accumulator {
+  background: linear-gradient(90deg, #ff914d, #ff3131);
+  padding: 10px 40px;
+  border-radius: 30px;
+  font-size: 24px;
+  font-weight: 900;
+  color: white;
+  border: 3px solid #fff;
+  box-shadow: 0 0 30px rgba(255, 49, 49, 0.8);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.multiplier-accumulator span {
+  font-size: 32px;
+  text-shadow: 2px 2px 0 #000;
+}
+@keyframes popIn {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+
+/* --- 4. КРАСИВЫЙ ИСЧЕЗАЮЩИЙ ВЫИГРЫШ --- */
+.beautiful-win-overlay {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  pointer-events: none; /* Чтобы не мешал кликать */
+  width: 100%;
+  text-align: center;
+}
+.beautiful-win-text {
+  font-size: 80px;
+  font-weight: 900;
+  color: #ffd700;
+  -webkit-text-stroke: 3px #542e00; /* Обводка текста */
+  text-shadow: 
+    0 0 20px #ff00ff, 
+    0 0 40px #ff00ff, 
+    0 10px 20px rgba(0,0,0,0.8);
+  animation: superWinFade 3s ease-in-out forwards;
+}
+
+@keyframes superWinFade {
+  0% { transform: scale(0.3) translateY(100px); opacity: 0; }
+  80% { transform: scale(1) translateY(0); opacity: 1; }
+  100% { transform: scale(1.5) translateY(-50px); opacity: 0; filter: blur(10px); }
+}
+/* Контейнер над сеткой */
+.win-display-area {
+  height: 100px; /* Фиксированная высота, чтобы сетка не прыгала */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+/* Стилизация текста выигрыша */
+.win-score-popup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: winScaleIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.win-label {
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 10px #ff00ff;
+  letter-spacing: 2px;
+}
+
+.win-value {
+  font-size: 54px;
+  font-weight: 900;
+  color: #ffd700; /* Золотой цвет */
+  -webkit-text-stroke: 2px #542e00;
+  text-shadow: 
+    0 0 15px rgba(255, 215, 0, 0.6),
+    0 5px 10px rgba(0,0,0,0.5);
+  line-height: 1;
+}
+
+/* Анимация появления */
+@keyframes winScaleIn {
+  0% { transform: scale(0.5) translateY(20px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Статус бары сверху */
+.top-status-bar {
+  height: 70px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.bonus-info-badge {
+  background: rgba(255, 0, 255, 0.2);
+  border: 2px solid #ff00ff;
+  padding: 8px 25px;
+  border-radius: 50px;
+  color: #fff;
+  font-weight: 900;
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+}
+
+.bonus-info-badge span {
+  color: #ff00ff;
+  font-size: 20px;
+  margin-left: 10px;
+}
+
+.logo-placeholder {
+  font-size: 32px;
+  font-weight: 900;
+  background: linear-gradient(180deg, #fff 0%, #ffb1c1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3));
+}
+/* Контейнер между Grid и кнопками */
+.info-display-layer {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 30px; /* Фиксированная высота */
+  margin: 8px 0 -10px 0px;
+}
+
+/* Общий стиль для плашек */
+.multiplier-box, .win-box {
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  padding: 5px 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 180px;
+  opacity: 0.3; /* Тусклые, когда нет данных */
+  transition: all 0.4s ease;
+  transform: translateY(2px);
+}
+
+/* Когда плашка активна (есть выигрыш или X) */
+.multiplier-box.active, .win-box.active {
+  opacity: 1;
+  transform: translateY(0);
+  border-color: #ffd700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+/* Стили для Множителя */
+.multiplier-box.active {
+  background: linear-gradient(180deg, #6a11cb 0%, #2575fc 100%);
+  border-color: #00d2ff;
+  box-shadow: 0 0 20px rgba(0, 210, 255, 0.5);
+}
+
+.mult-label, .win-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.multiplier-box.active .mult-label { color: #fff; }
+.win-box.active .win-label { color: #ffd700; }
+
+.mult-value {
+  font-size: 32px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.win-amount {
+  font-size: 32px;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+/* Анимация пульсации при обновлении множителя */
+.multiplier-box.active {
+  animation: pulseBox 0.5s ease-in-out;
+}
+
+@keyframes pulseBox {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* Верхний логотип */
+.logo-text {
+  font-size: 24px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px rgba(255,255,255,0.5);
+}
+
+.bonus-badge {
+  background: #ff00ff;
+  color: white;
+  padding: 5px 20px;
+  border-radius: 20px;
+  font-weight: bold;
+  border: 2px solid #fff;
+  box-shadow: 0 0 15px #ff00ff;
+}
