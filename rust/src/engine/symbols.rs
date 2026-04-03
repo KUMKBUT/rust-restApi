@@ -14,7 +14,6 @@ pub fn generate_random_symbol(is_bonus: bool) -> GameCell {
     let mut rng = thread_rng();
     let uid = Uuid::new_v4().to_string()[..8].to_string();
 
-    // 2% шанс на бомбу в бонусной игре
     if is_bonus && rng.gen_bool(0.02) {
         return GameCell { id: BOMB_ID, multiplier: Some(generate_multiplier()), uid };
     }

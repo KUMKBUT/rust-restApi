@@ -16,7 +16,6 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Загружаем переменные из .env
     dotenv().ok();
 
     let mongo_uri = std::env::var("MONGO_URI")
@@ -28,19 +27,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::with_options(client_options)?;
     let db = client.database(&db_name);
 
-    // Оборачиваем состояние в Arc для безопасного использования между потоками
     let shared_state = Arc::new(AppState { db });
 
     let cors = CorsLayer::new()
-        .allow_origin(Any) // Разрешает запросы с любого домена (для разработки)
-        .allow_methods(Any) // Разрешает любые методы (GET, POST, OPTIONS и т.д.)
-        .allow_headers(Any); // Разрешает любые заголовки (Content-Type и т.д.)
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
 
     let app = Router::new()
         .route("/", get(|| async { "Sweet Bananza API is running!" }))
         .route("/api/spin", post(handlers::game::spin_handler))
         .route("/api/buy-bonus", post(handlers::game::buy_bonus_handler))
-        .layer(cors) // ВАЖНО: добавить слой CORS здесь
+        .layer(cors) 
         .with_state(shared_state);
 
     let port = std::env::var("SERVER_PORT").unwrap_or_else(|_| "3000".to_string());

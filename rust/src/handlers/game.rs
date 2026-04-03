@@ -6,7 +6,7 @@ use crate::engine::constant::*;
 use serde::Deserialize;
 use std::sync::Arc;
 use rust_decimal::Decimal;
-use rand::seq::SliceRandom; // Не забудь добавить rand в Cargo.toml
+use rand::seq::SliceRandom;
 
 #[derive(Deserialize)]
 pub struct SpinPayload {
@@ -14,7 +14,7 @@ pub struct SpinPayload {
 }
 
 pub async fn spin_handler(
-    State(_state): State<Arc<AppState>>, // Добавили подчеркивание, чтобы убрать warning
+    State(_state): State<Arc<AppState>>,
     Json(payload): Json<SpinPayload>,
 ) -> Json<SpinResult> {
     let initial_grid: Vec<Vec<GameCell>> = (0..GRID_ROWS)
@@ -33,7 +33,6 @@ pub async fn buy_bonus_handler(
         .map(|_| (0..GRID_COLS).map(|_| generate_random_symbol(false)).collect())
         .collect();
 
-    // Реализация логики из твоего useGameLogic.js: расставляем 4 скаттера
     let mut positions: Vec<(usize, usize)> = Vec::new();
     for r in 0..GRID_ROWS {
         for c in 0..GRID_COLS {

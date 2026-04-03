@@ -24,8 +24,7 @@ pub fn process_full_round(mut grid: Vec<Vec<GameCell>>, bet: Decimal, is_bonus: 
     let mut cascades = Vec::new();
     let mut total_raw_win = dec!(0);
     let mut total_multiplier = 0;
-    
-    // Считаем множители бомб на финальной сетке
+
     for row in &grid {
         for cell in row {
             if cell.id == BOMB_ID {
@@ -40,8 +39,7 @@ pub fn process_full_round(mut grid: Vec<Vec<GameCell>>, bet: Decimal, is_bonus: 
 
         total_raw_win += win;
         let prev_grid = grid.clone();
-        
-        // Удаление и падение новых символов
+
         grid = apply_gravity(grid, &winning_ids, is_bonus);
         
         cascades.push(CascadeStep {
