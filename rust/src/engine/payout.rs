@@ -25,6 +25,8 @@ pub fn process_full_round(mut grid: Vec<Vec<GameCell>>, bet: Decimal, is_bonus: 
     let mut total_raw_win = dec!(0);
     let mut total_multiplier = 0;
 
+    let initial_grid_state = grid.clone();
+
     for row in &grid {
         for cell in row {
             if cell.id == BOMB_ID {
@@ -38,12 +40,11 @@ pub fn process_full_round(mut grid: Vec<Vec<GameCell>>, bet: Decimal, is_bonus: 
         if winning_ids.is_empty() { break; }
 
         total_raw_win += win;
-        let prev_grid = grid.clone();
 
         grid = apply_gravity(grid, &winning_ids, is_bonus);
         
         cascades.push(CascadeStep {
-            grid: prev_grid,
+            grid: grid.clone(),
             winning_ids,
             step_win: win,
         });
@@ -53,7 +54,7 @@ pub fn process_full_round(mut grid: Vec<Vec<GameCell>>, bet: Decimal, is_bonus: 
     let free_spins_won = if scatter_count >= 4 { 10 } else { 0 };
 
     SpinResult {
-        initial_grid: grid,
+        initial_grid: initial_grid_state,
         cascades,
         total_win: if total_multiplier > 0 { total_raw_win * Decimal::from(total_multiplier) } else { total_raw_win },
         total_multiplier,
@@ -94,7 +95,9 @@ fn apply_gravity(mut grid: Vec<Vec<GameCell>>, winning_ids: &Vec<u32>, is_bonus:
         let mut col_items = Vec::new();
         for r in (0..GRID_ROWS).rev() {
             if !winning_ids.contains(&grid[r][c].id) {
-                col_items.push(grid[r][c].clone());
+                let mut cell = grid[r][c].clone();
+                cell.is_new = false;
+                col_items.push(cell);
             }
         }
         while col_items.len() < GRID_ROWS {

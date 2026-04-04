@@ -8,14 +8,15 @@ pub struct GameCell {
     pub id: u32,
     pub multiplier: Option<u32>,
     pub uid: String,
+    pub is_new: bool,
 }
 
 pub fn generate_random_symbol(is_bonus: bool) -> GameCell {
     let mut rng = thread_rng();
     let uid = Uuid::new_v4().to_string()[..8].to_string();
 
-    if is_bonus && rng.gen_bool(0.02) {
-        return GameCell { id: BOMB_ID, multiplier: Some(generate_multiplier()), uid };
+    if is_bonus && rng.gen_bool(0.05) {
+        return GameCell { id: BOMB_ID, multiplier: Some(generate_multiplier()), uid, is_new: true};
     }
 
     let config = get_symbols_config();
@@ -24,11 +25,11 @@ pub fn generate_random_symbol(is_bonus: bool) -> GameCell {
 
     for sym in config {
         if choice < sym.weight {
-            return GameCell { id: sym.id, multiplier: None, uid };
+            return GameCell { id: sym.id, multiplier: None, uid, is_new: true};
         }
         choice -= sym.weight;
     }
-    GameCell { id: 1, multiplier: None, uid }
+    GameCell { id: 1, multiplier: None, uid , is_new: true}
 }
 
 fn generate_multiplier() -> u32 {

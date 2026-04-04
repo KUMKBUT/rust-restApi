@@ -19,39 +19,31 @@ const SYMBOL_MAP = {
 function App() {
   const {
     grid, spin, isSpinning, balance, bet, changeBet, buyBonus,
-    displayWin, freeSpins, isBonusGame, 
+    displayWin, freeSpins, isBonusGame,
     explodingSymbols, pulsingScatters, explodingBombs, currentMultiplier
   } = useGameLogic();
 
   return (
     <div className={`game-container ${isBonusGame ? 'bonus-mode' : ''}`}>
-      
-      {/* 1. ВЕРХНЯЯ ЧАСТЬ: Статус фриспинов */}
+
       <div className="top-status-bar">
         {isBonusGame ? (
-          <div className="bonus-badge">
-            FREE SPINS: <span>{freeSpins}</span>
-          </div>
+          <div className="bonus-badge">FREE SPINS: <span>{freeSpins}</span></div>
         ) : (
           <div className="logo-text">SWEET BONANZA</div>
         )}
       </div>
 
-      {/* 2. ИГРОВОЕ ПОЛЕ */}
       <div className="grid-wrapper">
         <div className="grid">
           {grid.map((row, rowIndex) => (
             <React.Fragment key={rowIndex}>
               {row.map((cell, colIndex) => {
-                // Добавляем проверку на существование cell
-                if (!cell) return null; 
-
-                // Безопасно получаем данные из мапы
+                if (!cell) return null;
                 const symbolData = SYMBOL_MAP[cell.id] || SYMBOL_MAP[1];
-
-                const isExploding = Boolean(explodingSymbols.includes(cell.id));
-                const isPulsing = Boolean(pulsingScatters.includes(cell.uid));
-                const isBombExploding = Boolean(explodingBombs.includes(cell.uid));
+                const isExploding    = explodingSymbols.includes(cell.uid);
+                const isPulsing      = pulsingScatters.includes(cell.uid);
+                const isBombExploding = explodingBombs.includes(cell.uid);
 
                 return (
                   <Symbol
@@ -59,7 +51,8 @@ function App() {
                     data={{
                       ...cell,
                       img: symbolData.img,
-                      name: symbolData.name
+                      name: symbolData.name,
+                      col: colIndex,
                     }}
                     isExploding={isExploding}
                     isPulsing={isPulsing}
@@ -72,28 +65,24 @@ function App() {
         </div>
       </div>
 
-      {/* 3. НОВАЯ ПАНЕЛЬ МЕЖДУ СЕТКОЙ И КНОПКАМИ */}
       <div className="info-display-layer">
-        {/* Блок Множителя (только в бонусе и когда есть X) */}
         {isBonusGame && (
           <div className={`multiplier-box ${currentMultiplier > 0 ? 'active' : ''}`}>
             <span className="mult-label">TOTAL MULTIPLIER</span>
             <span className="mult-value">x{currentMultiplier || 0}</span>
           </div>
         )}
-
-        {/* Блок Выигрыша */}
         <div className={`win-box ${displayWin > 0 ? 'active' : ''}`}>
           <span className="win-label">LAST WIN</span>
           <span className="win-amount">${displayWin.toLocaleString()}</span>
         </div>
       </div>
 
-      {/* 4. ПАНЕЛЬ УПРАВЛЕНИЯ */}
       <div className="controls-container">
         {!isBonusGame && (
-          <button className="buy-bonus-btn" onClick={buyBonus} disabled={isSpinning || balance < bet * 100}>
-            BUY BONUS <br/><span className="price">${bet * 100}</span>
+          <button className="buy-bonus-btn" onClick={buyBonus}
+            disabled={isSpinning || balance < bet * 100}>
+            BUY BONUS <br /><span className="price">${bet * 100}</span>
           </button>
         )}
 
@@ -106,10 +95,9 @@ function App() {
             </div>
             <button onClick={() => changeBet(10)} disabled={isSpinning || isBonusGame}>+</button>
           </div>
-
           <div className="balance-info">
             <span className="label">BALANCE</span>
-            <span className="value"> ${balance.toLocaleString()}</span>
+            <span className="value">${balance.toLocaleString()}</span>
           </div>
         </div>
 
@@ -118,11 +106,10 @@ function App() {
           onClick={() => spin()}
           disabled={isSpinning && freeSpins === 0}
         >
-          {isBonusGame ? (
-            <div className="spin-label">BONUS <span>{freeSpins}</span></div>
-          ) : (
-            isSpinning ? '...' : 'SPIN'
-          )}
+          {isBonusGame
+            ? <div className="spin-label">BONUS <span>{freeSpins}</span></div>
+            : isSpinning ? '...' : 'SPIN'
+          }
         </button>
       </div>
     </div>

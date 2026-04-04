@@ -7,7 +7,7 @@ pub const GRID_ROWS: usize = 5;
 pub const WIN_THRESHOLD: usize = 8;
 pub const SCATTER_ID: u32 = 10;
 pub const BOMB_ID: u32 = 11;
-pub const BONUS_BUY_COST: Decimal = dec!(100); // Цена бонуса = 100 ставок
+pub const BONUS_BUY_COST: Decimal = dec!(100);
 
 #[derive(Debug, Serialize, Clone)]
 pub struct SymbolConfig {

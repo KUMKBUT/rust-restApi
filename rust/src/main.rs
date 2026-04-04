@@ -37,14 +37,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/", get(|| async { "Sweet Bananza API is running!" }))
         .route("/api/spin", post(handlers::game::spin_handler))
-        .route("/api/buy-bonus", post(handlers::game::buy_bonus_handler))
         .layer(cors) 
         .with_state(shared_state);
 
     let port = std::env::var("SERVER_PORT").unwrap_or_else(|_| "3000".to_string());
     let addr: SocketAddr = format!("0.0.0.0:{}", port).parse()?;
     
-    println!("🚀 Server started at http://{}", addr);
+    println!("Server started at http://{}", addr);
     
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
