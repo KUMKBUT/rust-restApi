@@ -13,7 +13,6 @@ use axum::{
 use dotenvy::dotenv;
 use mongodb::{bson::oid::ObjectId, Client, options::ClientOptions};
 use rand::{seq::SliceRandom, thread_rng, Rng};
-use rand::prelude::*;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -138,7 +137,6 @@ pub fn process_full_round(mut grid: Vec<Vec<GameCell>>, bet: Decimal, is_bonus: 
 
     let initial_grid_state = grid.clone();
 
-    // Суммируем множители со всех бомб на начальной сетке
     for row in &grid {
         for cell in row {
             if cell.id == BOMB_ID {
@@ -221,7 +219,6 @@ fn apply_gravity(
     for c in 0..GRID_COLS {
         let mut col_items: Vec<GameCell> = Vec::new();
 
-        // Собираем выжившие ячейки снизу вверх
         for r in (0..GRID_ROWS).rev() {
             if !winning_ids.contains(&grid[r][c].id) {
                 let mut cell = grid[r][c].clone();
@@ -230,12 +227,10 @@ fn apply_gravity(
             }
         }
 
-        // Добавляем новые символы сверху
         while col_items.len() < GRID_ROWS {
             col_items.push(generate_random_symbol(is_bonus));
         }
 
-        // Записываем обратно (индекс 0 — верхняя строка)
         for r in 0..GRID_ROWS {
             grid[r][c] = col_items[GRID_ROWS - 1 - r].clone();
         }
@@ -258,21 +253,18 @@ fn count_scatters(grid: &Vec<Vec<GameCell>>) -> usize {
 pub struct User {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
-    pub external_id: String, // значение из Bearer token (например, "1")
+    pub external_id: String,
     pub balance: Decimal,
     pub free_spins_left: i32,
     pub is_bonus_active: bool,
-    pub bonus_game: bool,       // ← новое поле: находится ли игрок в бонусной игре
+    pub bonus_game: bool,
 }
 
-// Этот struct описывает ЧТО именно мы вернём клиенту в ответе /api/data.
-// Мы не отдаём весь User целиком — только нужные поля.
-// Derive(Serialize) — значит Rust умеет автоматически превратить это в JSON.
 #[derive(Debug, Serialize)]
 pub struct UserDataResponse {
-    pub id: String,       // _id пользователя в виде строки
-    pub balance: Decimal, // текущий баланс
-    pub bonus_game: bool, // статус бонусной игры
+    pub id: String,
+    pub balance: Decimal,
+    pub bonus_game: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -370,44 +362,23 @@ pub async fn spin_handler(
     Json(result)
 }
 
-// ─────────────────────────────────────────────────────────────
-//  GET /api/data
-//
-//  Клиент присылает заголовок:  Authorization: Bearer <token>
-//  Мы берём <token>, ищем пользователя у которого external_id == token,
-//  и возвращаем его id, balance и bonus_game.
-//
-//  Возвращаемый тип:  Result<Json<...>, (StatusCode, Json<...>)>
-//  Это означает: либо успех (200 + JSON), либо ошибка (код + JSON с сообщением).
-// ─────────────────────────────────────────────────────────────
 pub async fn get_data_handler(
-    // State — это наше общее состояние приложения (содержит подключение к БД).
-    // Arc<AppState> — умный указатель, позволяет безопасно делить состояние
-    // между несколькими запросами одновременно.
+
     State(state): State<Arc<AppState>>,
 
-    // HeaderMap — это map всех HTTP-заголовков запроса.
-    // Из него мы достанем Authorization.
     headers: HeaderMap,
 ) -> Result<Json<UserDataResponse>, (StatusCode, Json<serde_json::Value>)> {
 
-    // ── Шаг 1: извлекаем токен из заголовка Authorization ──────
-
-    // .get("authorization") — ищем заголовок (axum приводит имена к lowercase).
-    // Если заголовка нет — возвращаем ошибку 401 Unauthorized.
     let auth_header = headers
         .get("authorization")
-        .and_then(|v| v.to_str().ok()) // конвертируем байты в &str
+        .and_then(|v| v.to_str().ok())
         .ok_or_else(|| {
-            // ok_or_else: если None — превращаем в Err с нашим ответом об ошибке
             (
                 StatusCode::UNAUTHORIZED,
                 Json(serde_json::json!({ "error": "Missing Authorization header" })),
             )
-        })?; // "?" — если Err, сразу выходим из функции и возвращаем эту ошибку
+        })?;
 
-    // Заголовок выглядит как "Bearer abc123".
-    // .strip_prefix("Bearer ") убирает префикс и оставляет только токен "abc123".
     let token = auth_header
         .strip_prefix("Bearer ")
         .ok_or_else(|| {
@@ -417,49 +388,34 @@ pub async fn get_data_handler(
             )
         })?;
 
-    // ── Шаг 2: ищем пользователя в MongoDB ─────────────────────
-
-    // Получаем коллекцию "users" и указываем что документы там — это User.
     let collection = state.db.collection::<User>("users");
 
-    // doc! — макрос для создания BSON-документа (формат запроса MongoDB).
-    // Ищем документ где поле external_id равно нашему токену.
     let filter = mongodb::bson::doc! { "external_id": token };
 
-    // .await — ждём асинхронного результата от БД.
-    // Результат: Ok(Some(user)) | Ok(None) | Err(e)
     let maybe_user = collection
         .find_one(filter, None)
         .await
         .map_err(|e| {
-            // map_err: если БД вернула ошибку — конвертируем её в HTTP 500
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({ "error": format!("Database error: {}", e) })),
             )
         })?;
 
-    // ── Шаг 3: если пользователь не найден — создаём его ──────
-
-    // match — это как switch в других языках, но мощнее.
-    // Мы проверяем два варианта: Some(user) — нашли, None — не нашли.
     let user = match maybe_user {
-        // Пользователь уже есть в БД — просто возвращаем его
+
         Some(existing) => existing,
 
-        // Пользователя нет — создаём нового с дефолтными значениями
         None => {
             let new_user = User {
-                id: None, // None означает что MongoDB сам сгенерирует _id
+                id: None,
                 external_id: token.to_string(),
-                balance: dec!(1000), // стартовый баланс
+                balance: dec!(1000),
                 free_spins_left: 0,
                 is_bonus_active: false,
                 bonus_game: false,
             };
 
-            // .insert_one() — вставляем документ в коллекцию.
-            // Возвращает InsertOneResult у которого есть inserted_id.
             let result = collection
                 .insert_one(new_user.clone(), None)
                 .await
@@ -470,19 +426,14 @@ pub async fn get_data_handler(
                     )
                 })?;
 
-            // inserted_id имеет тип Bson — нам нужно достать из него ObjectId.
-            // as_object_id() возвращает Option<ObjectId>, unwrap_or_default() на случай если что-то пошло не так.
             let inserted_id = result.inserted_id.as_object_id().unwrap_or_default();
 
-            // Возвращаем того же нового пользователя но уже с присвоенным id
             User {
                 id: Some(inserted_id),
-                ..new_user // ".." означает "остальные поля взять из new_user"
+                ..new_user 
             }
         }
     };
-
-    // ── Шаг 4: формируем и отправляем ответ ────────────────────
 
     let response = UserDataResponse {
         id: user.id.unwrap_or_default().to_hex(),
